@@ -62,6 +62,12 @@ export class PhotoEditorComponent implements OnInit {
         };
         // push: add photo moi vao cuoi mang
         this.photos.push(photo);
+        if (photo.isMain) {
+          this.authService.changeMemberPhoto(photo.url);
+          // thuc hien update lai gia tri luu trong localStorage
+          this.authService.currentUser.photoUrl = photo.url;
+          localStorage.setItem('user', JSON.stringify(this.authService.currentUser));
+        }
       }
     };
   }
