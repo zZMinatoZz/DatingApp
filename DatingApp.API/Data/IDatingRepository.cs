@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using DatingApp.API.Helpers;
 using DatingApp.API.Models;
 
 namespace DatingApp.API.Data
@@ -11,7 +12,7 @@ namespace DatingApp.API.Data
          void Delete<T>(T entity) where T:class;
          Task<bool> SaveAll();
          //get all users
-         Task<IEnumerable<User>> GetUsers();
+         Task<PagedList<User>> GetUsers(UserParams userParams);
          //get one user
          Task<User> GetUser(int id);
          Task<Photo> GetPhoto(int id);
