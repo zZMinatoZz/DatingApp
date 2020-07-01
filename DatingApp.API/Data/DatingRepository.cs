@@ -24,6 +24,13 @@ namespace DatingApp.API.Data
         {
             _context.Remove(entity);
         }
+        // thuc hien tim kiem trong table 'Likes' xem user (id) da like user (recipientId) chua
+        public async Task<Like> GetLike(int userId, int recipientId)
+        {
+            return await _context.Likes.
+                FirstOrDefaultAsync(u => u.LikerId == userId && u.LikeeId == recipientId);
+        }
+
         // get main photo of user
         public async Task<Photo> GetMainPhotoForUser(int userId)
         {
@@ -58,6 +65,19 @@ namespace DatingApp.API.Data
 
             users = users.Where(u => u.Gender == userParams.Gender);
 
+            if(userParams.Likers)
+            {
+                var userLikers = await GetUserLikes(userParams.UserId, userParams.Likers);
+                users = users.Where(u => userLikers.Contains(u.Id));
+            }
+
+            if(userParams.Likees)
+            {
+                var userLikees = await GetUserLikes(userParams.UserId, userParams.Likers);
+                // get users theo list userid trong 'userLikees'
+                users = users.Where(u => userLikees.Contains(u.Id));
+            }
+
             if(userParams.MinAge != 18 || userParams.MaxAge != 99)
             {
                 // minimum date of birth
@@ -81,6 +101,23 @@ namespace DatingApp.API.Data
             }
 
             return  await PagedList<User>.CreateAsync(users, userParams.PageNumber, userParams.PageSize);
+        }
+
+        private async Task<IEnumerable<int>> GetUserLikes(int id, bool likers)
+        {
+            // get user kem theo truyen data 2 collection 'Likers' va 'Likees' vao tu database
+            var user = await _context.Users.Include(x => x.Likers).Include(x => x.Likees)
+                .FirstOrDefaultAsync(u => u.Id == id);
+
+            if (likers)
+            {
+                return user.Likers.Where(u => u.LikeeId == id).Select(i => i.LikerId);
+            }
+            else
+            {
+                // tim kiem nhung ng dc user nay like
+                return user.Likees.Where(u => u.LikerId == id).Select(i => i.LikeeId);
+            }
         }
 
         // if have any record was saved, return true, else return false

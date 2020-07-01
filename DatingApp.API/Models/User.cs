@@ -20,5 +20,9 @@ namespace DatingApp.API.Models
         public string City { get; set; }
         public string Country { get; set; }
         public ICollection<Photo> Photos { get; set; }
+        // list ng 'like' user
+        public ICollection<Like> Likers { get; set; }
+        // list ng dc user 'like'
+        public ICollection<Like> Likees { get; set; }
     }
 }
