@@ -14,6 +14,7 @@ namespace DatingApp.API.Data
         public DbSet<User> Users { get; set; }
         public DbSet<Photo> Photos { get; set; }
         public DbSet<Like> Likes { get; set; }
+        public DbSet<Message> Messages { get; set; }
 
         // su dung 'Fluent API' de tao table
         // can override OnModelCreating() de su dung
@@ -37,6 +38,19 @@ namespace DatingApp.API.Data
                 .HasOne(u => u.Liker)
                 .WithMany(u => u.Likees)
                 .HasForeignKey(u => u.LikerId)
+                .OnDelete(DeleteBehavior.Restrict);
+            
+            // 1 sender co the gui nhieu message => tao relationships 1-n giua 'sender' o table 
+            // 'Messages' voi 'messagesSent' o table User
+            builder.Entity<Message>()
+                .HasOne(u => u.Sender)
+                .WithMany(m => m.MessagesSent)
+                .OnDelete(DeleteBehavior.Restrict);
+            
+            // tuong tu 1 recipient (ng nhan) co the nhan nhieu messages
+            builder.Entity<Message>()
+                .HasOne(u => u.Recipient)
+                .WithMany(m => m.MessagesReceived)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }

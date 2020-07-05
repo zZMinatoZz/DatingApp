@@ -24,5 +24,9 @@ namespace DatingApp.API.Models
         public ICollection<Like> Likers { get; set; }
         // list ng dc user 'like'
         public ICollection<Like> Likees { get; set; }
+        // list message da gui
+        public ICollection<Message> MessagesSent { get; set; }
+        // list message da nhan
+        public ICollection<Message> MessagesReceived { get; set; }
     }
 }

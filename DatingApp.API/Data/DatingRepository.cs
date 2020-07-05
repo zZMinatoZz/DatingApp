@@ -65,20 +65,20 @@ namespace DatingApp.API.Data
 
             users = users.Where(u => u.Gender == userParams.Gender);
 
-            if(userParams.Likers)
+            if (userParams.Likers)
             {
                 var userLikers = await GetUserLikes(userParams.UserId, userParams.Likers);
                 users = users.Where(u => userLikers.Contains(u.Id));
             }
 
-            if(userParams.Likees)
+            if (userParams.Likees)
             {
                 var userLikees = await GetUserLikes(userParams.UserId, userParams.Likers);
                 // get users theo list userid trong 'userLikees'
                 users = users.Where(u => userLikees.Contains(u.Id));
             }
 
-            if(userParams.MinAge != 18 || userParams.MaxAge != 99)
+            if (userParams.MinAge != 18 || userParams.MaxAge != 99)
             {
                 // minimum date of birth
                 var minDob = DateTime.Today.AddYears(-userParams.MaxAge - 1);
@@ -89,7 +89,7 @@ namespace DatingApp.API.Data
 
             if (!string.IsNullOrEmpty(userParams.OrderBy))
             {
-                switch(userParams.OrderBy)
+                switch (userParams.OrderBy)
                 {
                     case "created":
                         users = users.OrderByDescending(u => u.Created);
@@ -100,7 +100,7 @@ namespace DatingApp.API.Data
                 }
             }
 
-            return  await PagedList<User>.CreateAsync(users, userParams.PageNumber, userParams.PageSize);
+            return await PagedList<User>.CreateAsync(users, userParams.PageNumber, userParams.PageSize);
         }
 
         private async Task<IEnumerable<int>> GetUserLikes(int id, bool likers)
@@ -125,6 +125,63 @@ namespace DatingApp.API.Data
         {
             return await _context.SaveChangesAsync() > 0;
         }
-        
+
+        public async Task<Message> GetMessage(int id)
+        {
+            return await _context.Messages.FirstOrDefaultAsync(m => m.Id == id);
+        }
+
+        public Task<PagedList<Message>> GetMessagesForUser(MessageParams messageParams)
+        {
+            // ThenInclude(): message include sender (user) then sender (user) include photos
+            // tuong tu 'recipient'
+            // convert IEnumerable to LinQ.IQueryable de su dung cac ham filter cua linq
+            var messages = _context.Messages
+                .Include(u => u.Sender).ThenInclude(p => p.Photos)
+                .Include(u => u.Recipient).ThenInclude(p => p.Photos)
+                .AsQueryable();
+
+            switch (messageParams.MessageContainer)
+            {
+                case "Inbox":
+                    // filter nhung message co recipient = id params
+                    // van hien thi trong inbox message neu ng gui da xoa nhung ng nhan chua xoa
+                    messages = messages.Where(u => u.RecipientId == messageParams.UserId 
+                        && u.RecipientDeleted == false);
+                    break;
+                case "Outbox":
+                    // van hien thi trong outbox message neu ng nhan da xoa nhung ng gui chua xoa
+                    messages = messages.Where(u => u.SenderId == messageParams.UserId 
+                        && u.SenderDeleted == false);
+                    break;
+                default:
+                    // // van hien thi trong unread message neu ng gui da xoa nhung ng nhan chua xoa
+                    messages = messages.Where(u => u.RecipientId == messageParams.UserId 
+                        && u.RecipientDeleted == false && u.IsRead == false);
+                    break;
+
+            }
+            // oderby theo time message gui
+            messages = messages.OrderByDescending(d => d.MessageSent);
+            // return ve list messages va thong so config pagination
+            return PagedList<Message>.CreateAsync(messages, messageParams.PageNumber, messageParams.PageSize);
+
+        }
+
+        public async Task<IEnumerable<Message>> GetMessageThread(int userId, int recipientId)
+        {
+            // get list messages luong chat giua 2 users (conversation)
+            // van get va hien thi message neu recipient chua xoa, va hien thi tren conversation cua recipient
+            // nguoc lai se hide message do o conversation cua sender neu sender da xoa
+            var messages = await _context.Messages
+                .Include(u => u.Sender).ThenInclude(p => p.Photos)
+                .Include(u => u.Recipient).ThenInclude(p => p.Photos)
+                .Where(m => m.RecipientId == userId && m.RecipientDeleted == false && m.SenderId == recipientId
+                    || m.RecipientId == recipientId && m.SenderId == userId && m.SenderDeleted == false)
+                .OrderByDescending(m => m.MessageSent)
+                .ToListAsync();
+
+            return messages;
+        }
     }
 }

@@ -19,5 +19,10 @@ namespace DatingApp.API.Data
          Task<Photo> GetMainPhotoForUser(int userId);
          // id user, id ng like user
          Task<Like> GetLike(int userId, int recipientId);
+         Task<Message> GetMessage(int id);
+         // inbox, outbox, unread message
+         Task<PagedList<Message>> GetMessagesForUser(MessageParams messageParams);
+         // conversation between 2 users
+         Task<IEnumerable<Message>> GetMessageThread(int userId, int recipientId);
     }
 }
