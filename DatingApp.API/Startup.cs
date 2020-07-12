@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -34,6 +35,40 @@ namespace DatingApp.API
 
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
+        {
+            // khai bao su dung service Sqlite cho class DataContext
+            // Get value cua "DefaultConnection" khai bao trong appsetting.json
+            services.AddDbContext<DataContext>(x => 
+                x.UseMySql(Configuration.GetConnectionString("DefaultConnection"))
+                    .ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.IncludeIgnoredWarning)));
+            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2)
+                .AddJsonOptions(opt => {
+                    opt.SerializerSettings.ReferenceLoopHandling = 
+                        Newtonsoft.Json.ReferenceLoopHandling.Ignore;
+                });
+            services.AddCors();
+            services.Configure<CloudinarySettings>(Configuration.GetSection("CloudinarySettings"));
+            services.AddAutoMapper();
+            services.AddTransient<Seed>();
+            // khai bao DI container
+            services.AddScoped<IAuthRepository, AuthRepository>();
+            services.AddScoped<IDatingRepository, DatingRepository>();
+            //
+            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options => {
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuerSigningKey = true,
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII
+                            .GetBytes(Configuration.GetSection("AppSettings:Token").Value)),
+                        ValidateIssuer = false,
+                        ValidateAudience = false,
+                    };
+                });
+            services.AddScoped<LogUserActivity>();
+        }
+
+        public void ConfigureDevelopmentServices(IServiceCollection services)
         {
             // khai bao su dung service Sqlite cho class DataContext
             // Get value cua "DefaultConnection" khai bao trong appsetting.json
@@ -93,7 +128,16 @@ namespace DatingApp.API
             // seeder.SeedUsers();
             app.UseCors(x => x.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
             app.UseAuthentication();
-            app.UseMvc();
+            // using to go to look for 'Index.html' or 'default.aspx' or 'default.html'... any one default files
+            app.UseDefaultFiles();
+            // su dung static file, sau khi client nhap dia chi web, tai nguyen trong 'wwwroot' (js, css, html) se dc su dung
+            // sau khi su dung, truy cap thang vao static file tren folder 'wwwroot' trong folder 'api' de get tai nguyen va response ve client
+            app.UseStaticFiles();
+            // truy cap den 'Fallback' controller, action la ham 'Index()'
+            app.UseMvc(routes => routes.MapSpaFallbackRoute(
+                name: "spa-fallback",
+                defaults: new { controller = "Fallback", action = "Index"}
+            ));
         }
     }
 }
